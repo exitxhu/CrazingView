@@ -25,14 +25,14 @@ namespace CrazingView.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Strategy>>> GetStrategies()
         {
-            return await _context.Strategies.ToListAsync();
+            return await _context.Strategies.AsNoTracking().Include(n=>n.Inputs).ToListAsync();
         }
 
         // GET: api/Strategies/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Strategy>> GetStrategy(long id)
         {
-            var strategy = await _context.Strategies.FindAsync(id);
+            var strategy = await _context.Strategies.AsNoTracking().Include(n => n.Inputs).FirstOrDefaultAsync(n=>n.Id == id);
 
             if (strategy == null)
             {

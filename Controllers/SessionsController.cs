@@ -28,6 +28,46 @@ namespace CrazingView.Controllers
             return await _context.Sessions.ToListAsync();
         }
 
+
+        [HttpPost("[action]")]
+        [ProducesResponseType(typeof(object), 200)]
+        public async Task<IActionResult> StartNewSession(long stratId, string tabId)
+        {
+            var strat = await _context.Strategies.FirstOrDefaultAsync(n => n.Id == stratId);
+            var lastSession = await _context.Sessions.OrderByDescending(n => n.StartTime).FirstOrDefaultAsync(n => n.StrategyId == stratId);
+            var records = _context.Records
+                .OrderBy(n => n.Id)
+                .Where(n => n.StrategyId == stratId && (lastSession == null ? true : n.Id > lastSession.ChunkEndId))
+                .Take(100)
+                .ToList();
+            var session = new Session
+            {
+                ChunkCount = records.Count,
+                ChunkEndId = records.LastOrDefault().Id,
+                ChunkStartId = records.FirstOrDefault().Id,
+                PairName = strat.PairName,
+                Status = SessionStatus.Pending,
+                TabId = tabId,
+                StartTime = DateTime.Now,
+                StrategyId = stratId
+            };
+            var log = new SessionLog
+            {
+                LogTime = DateTime.Now,
+                Session = session,
+                LogType = LogType.Started,
+
+            };
+            _context.Add(session);
+            _context.Add(log);
+            await _context.SaveChangesAsync();
+            return Ok(new
+            {
+                sid = session.Id,
+                records = records.Select(n => new { n.Id, n.Value })
+            });
+        }
+
         // GET: api/Sessions/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Session>> GetSession(long id)
